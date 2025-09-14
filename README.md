@@ -64,13 +64,6 @@ orbit-ai/
 └── README.md
 ```
 
-## 🗺️ Roadmap
-
-- [ ] Expand tool registry (automation, APIs, task runners)
-- [ ] Add persistence and long-term memory
-- [ ] Multi-user sessions
-- [ ] Packaged CLI version
-
 ## 🤝 Contributing
 
 Contributions, issues, and feature requests are welcome!
