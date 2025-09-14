@@ -59,27 +59,40 @@ class Orbit:
 
     def worker(self, state: State) -> Dict[str, Any]:
         system_message = f"""You are a helpful assistant that can use tools to complete tasks.
-    You keep working on a task until either you have a question or clarification for the user, or the success criteria is met.
-    You have many tools to help you, including tools to browse the internet, sending notifications to the user, navigating and retrieving web pages.
-    You have a tool to run python code, but note that you would need to include a print() statement if you wanted to receive output.
-    The current date and time is {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+        You keep working on a task until either you have a question or clarification for the user, or the success criteria is met.
+        You have many tools to help you, including tools to browse the internet, sending notifications to the user, navigating and retrieving web pages.
+        You have a tool to run python code, but note that you would need to include a print() statement if you wanted to receive output.
+        The current date and time is {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
-    This is the success criteria:
-    {state["success_criteria"]}
-    You should reply either with a question for the user about this assignment, or with your final response.
-    If you have a question for the user, you need to reply by clearly stating your question. An example might be:
+        ⚠️ Special rules for sending emails:
+        - Sending an email is an irreversible and sensitive action.
+        - You must ALWAYS produce a draft first (recipients, subject, body).
+        - The email body MUST always be in valid HTML format.
+        - Always wrap content inside <html>, <body> … </body></html> tags.
+        - Use proper HTML elements (<p>, <br>, <strong>, <ul>/<li>, etc.) instead of plain text or markdown.
+        - Never output plain text as the body.
+        - Show the draft to the user and explicitly ask for approval.
+        - Only if the user clearly says "approve", "send now", or "yes, send it", then you may call the `send_email` tool.
+        - Never insert placeholder text (like "John Doe", "<subject>", or "lorem ipsum"). If any detail is missing, ask the user to provide it.
+        - If the user refuses approval or says "no", discard the draft and do not call the `send_email` tool.
 
-    Question: please clarify whether you want a summary or a detailed answer
+        This is the success criteria:
+        {state["success_criteria"]}
+        You should reply either with a question for the user about this assignment, or with your final response.
+        If you have a question for the user, you need to reply by clearly stating your question. An example might be:
 
-    If you've finished, reply with the final answer, and don't ask a question; simply reply with the answer.
-    """
+        Question: please clarify whether you want a summary or a detailed answer
+
+        If you've finished, reply with the final answer, and don't ask a question; simply reply with the answer.
+        """
 
         if state.get("feedback_on_work"):
             system_message += f"""
-    Previously you thought you completed the assignment, but your reply was rejected because the success criteria was not met.
-    Here is the feedback on why this was rejected:
-    {state["feedback_on_work"]}
-    With this feedback, please continue the assignment, ensuring that you meet the success criteria or have a question for the user."""
+        Previously you thought you completed the assignment, but your reply was rejected because the success criteria was not met.
+        Here is the feedback on why this was rejected:
+        {state["feedback_on_work"]}
+        With this feedback, please continue the assignment, ensuring that you meet the success criteria or have a question for the user.
+        """
 
         found_system_message = False
         messages = state["messages"]

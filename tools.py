@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import os
 import requests
 from langchain.agents import Tool
+from langchain_core.tools.structured import StructuredTool
 from langchain_google_community import CalendarToolkit
 from langchain_community.agent_toolkits import FileManagementToolkit
 from langchain_community.tools.wikipedia.tool import WikipediaQueryRun
@@ -11,8 +12,12 @@ from langchain_experimental.tools import PythonREPLTool
 from langchain_community.utilities import GoogleSerperAPIWrapper
 from langchain_community.utilities.wikipedia import WikipediaAPIWrapper
 from utils import safe_tool
+import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from typing import Dict, List
+from pydantic import EmailStr, ValidationError, BaseModel, Field
+import logging
 import google.oauth2.service_account as sa
 
 load_dotenv(override=True)
@@ -20,6 +25,12 @@ pushover_token = os.getenv("PUSHOVER_TOKEN")
 pushover_user = os.getenv("PUSHOVER_USER")
 pushover_url = "https://api.pushover.net/1/messages.json"
 serper = GoogleSerperAPIWrapper()
+
+class Mail(BaseModel):
+    to_addr: EmailStr | list[EmailStr] = Field(description="Recipient address or list of addresses")
+    subject: str = Field(description="Subject")
+    body: str = Field(description="Body")
+
 
 async def playwright_tools():
     playwright = await async_playwright().start()
@@ -41,13 +52,50 @@ def get_file_tools():
 def get_calendar_tools():
     if not hasattr(sa, "ServiceCredentials"):
         sa.ServiceCredentials = sa.Credentials
-
+        
     toolkit = CalendarToolkit()
     return toolkit.get_tools()
+
+def send_email(to_addr: EmailStr | List[EmailStr], subject: str, body: str) -> Dict[str, str]:
+    smtp_server = os.environ.get("SMTP_SERVER")
+    smtp_port = 587
+    sender_email = os.environ.get("SMTP_EMAIL")
+    sender_password = os.environ.get("SMTP_PASSWORD")
+
+    if not smtp_server or not sender_email or not sender_password:
+        logging.warning("SMTP configuration missing")
+        return {"status": "error", "message": "Missing SMTP configuration"}
+
+    recipient_emails = to_addr if isinstance(to_addr, list) else [to_addr]
+    for r in recipient_emails:
+        try:
+            EmailStr._validate(r)
+        except ValidationError:
+            logging.error(f"Invalid recipient email: {r}")
+            return {"status": "error", "message": f"Invalid recipient email: {r}"}
+
+    try:
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(sender_email, sender_password)
+
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"] = sender_email
+            msg["To"] = ", ".join(recipient_emails)
+            msg.attach(MIMEText(body, "html"))
+
+            server.sendmail(sender_email, recipient_emails, msg.as_string())
+            logging.info(f"Emails sent successfully to {', '.join(recipient_emails)}")
+        return {"status": "success", "message": f"Emails sent to {', '.join(recipient_emails)}"}
+    except Exception as e:
+        logging.error(f"Failed to send email: {e}")
+        return {"status": "error", "message": f"Failed to send email: {e}"}
 
 
 async def other_tools():
     push_tool = Tool(name="notify_user", func=push, description="Use this tool when you want to send a push notification to the user")
+    email_tool = StructuredTool(name="send_email", func=send_email, description="Use this tool when you want to send an email", args_schema=Mail)
     calendar_tools = get_calendar_tools()
     file_tools = get_file_tools()
 
@@ -62,5 +110,5 @@ async def other_tools():
 
     python_repl = PythonREPLTool()
     
-    return file_tools+ calendar_tools + [push_tool, tool_search, python_repl,  wiki_tool]
+    return file_tools+ calendar_tools + [push_tool, tool_search, python_repl,  wiki_tool, email_tool]
 
