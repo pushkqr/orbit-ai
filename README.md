@@ -8,7 +8,7 @@
 * **Internet Search**: Query the web with Google Serper and Wikipedia integration.
 * **Notifications**: Push real-time updates to your device (via Pushover).
 * **File Management**: Read and write files in a controlled sandbox.
-* **Python REPL**: Execute and test Python snippets inline (include print() statements to see output).
+* **Python REPL**: Execute and test Python snippets inline.
 * **Markdown to PDF**: Convert Markdown (.md) files to PDF.
 * **Evaluation Loop**: Smart self-evaluation of responses against success criteria.
 
