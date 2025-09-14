@@ -53,7 +53,7 @@ class Orbit:
         self.tools += await other_tools()
         worker_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
         self.worker_llm_with_tools = worker_llm.bind_tools(self.tools)
-        evaluator_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
+        evaluator_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite")
         self.evaluator_llm_with_output = evaluator_llm.with_structured_output(EvaluatorOutput)
         await self.build_graph()
 
