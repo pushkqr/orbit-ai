@@ -42,6 +42,10 @@ PUSHOVER_TOKEN=your_token
 PUSHOVER_USER=your_user
 GOOGLE_API_KEY=your_google_api_key
 DEBUG=True | False
+SERPER_API_KEY=your_serper_api_key
+SMTP_EMAIL=your_email_address
+SMTP_PASSWORD=your_app_password
+SMTP_SERVER=your_smtp_server_url
 ```
 
 ### Google API / OAuth Client Setup
