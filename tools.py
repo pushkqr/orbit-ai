@@ -19,6 +19,8 @@ from typing import Dict, List
 from pydantic import EmailStr, ValidationError, BaseModel, Field
 import logging
 import google.oauth2.service_account as sa
+from markdown_pdf import MarkdownPdf, Section
+
 
 load_dotenv(override=True)
 pushover_token = os.getenv("PUSHOVER_TOKEN")
@@ -31,20 +33,6 @@ class Mail(BaseModel):
     subject: str = Field(description="Subject")
     body: str = Field(description="Body")
 
-
-async def playwright_tools():
-    playwright = await async_playwright().start()
-    browser = await playwright.chromium.launch(headless=False)
-    toolkit = PlayWrightBrowserToolkit.from_browser(async_browser=browser)
-    return toolkit.get_tools(), browser, playwright
-
-@safe_tool
-def push(text: str):
-    """Send a push notification to the user"""
-    requests.post(pushover_url, data = {"token": pushover_token, "user": pushover_user, "message": text})
-    return {"success": "Push Notification sent successfully"}
-
-
 def get_file_tools():
     toolkit = FileManagementToolkit(root_dir="sandbox")
     return toolkit.get_tools()
@@ -56,6 +44,13 @@ def get_calendar_tools():
     toolkit = CalendarToolkit()
     return toolkit.get_tools()
 
+@safe_tool
+def push(text: str):
+    """Send a push notification to the user"""
+    requests.post(pushover_url, data = {"token": pushover_token, "user": pushover_user, "message": text})
+    return {"success": "Push Notification sent successfully"}
+
+@safe_tool
 def send_email(to_addr: EmailStr | List[EmailStr], subject: str, body: str) -> Dict[str, str]:
     smtp_server = os.environ.get("SMTP_SERVER")
     smtp_port = 587
@@ -92,10 +87,26 @@ def send_email(to_addr: EmailStr | List[EmailStr], subject: str, body: str) -> D
         logging.error(f"Failed to send email: {e}")
         return {"status": "error", "message": f"Failed to send email: {e}"}
 
+@safe_tool
+def markdown_to_pdf(file_name: str, output: str = "sandbox/output.pdf"):
+    with open(f"sandbox/{file_name}", "r") as f:
+        markdown_content = f.read()
+    pdf = MarkdownPdf()
+    pdf.add_section(Section(markdown_content))
+    pdf.save(output)
+    return {"success": True, "output_path": output}
+
+
+async def playwright_tools():
+    playwright = await async_playwright().start()
+    browser = await playwright.chromium.launch(headless=False)
+    toolkit = PlayWrightBrowserToolkit.from_browser(async_browser=browser)
+    return toolkit.get_tools(), browser, playwright
 
 async def other_tools():
     push_tool = Tool(name="notify_user", func=push, description="Use this tool when you want to send a push notification to the user")
     email_tool = StructuredTool(name="send_email", func=send_email, description="Use this tool when you want to send an email", args_schema=Mail)
+    markdown_to_pdf_tool = Tool(name="markdown_to_pdf", func=markdown_to_pdf, description="Use this tool when you want to convert Markdown(.md) file to PDF")
     calendar_tools = get_calendar_tools()
     file_tools = get_file_tools()
 
@@ -110,5 +121,5 @@ async def other_tools():
 
     python_repl = PythonREPLTool()
     
-    return file_tools+ calendar_tools + [push_tool, tool_search, python_repl,  wiki_tool, email_tool]
+    return file_tools+ calendar_tools + [push_tool, tool_search, python_repl,  wiki_tool, email_tool, markdown_to_pdf_tool]
 
