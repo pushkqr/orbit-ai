@@ -16,7 +16,7 @@
 Clone the repo:
 
 ```bash
-git clone https://github.com/your-username/orbit-ai
+git clone https://github.com/pushkqr/orbit-ai
 cd orbit-ai
 ```
 
