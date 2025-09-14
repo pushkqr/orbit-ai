@@ -4,12 +4,16 @@ from dotenv import load_dotenv
 import os
 import requests
 from langchain.agents import Tool
+from langchain_google_community import CalendarToolkit
 from langchain_community.agent_toolkits import FileManagementToolkit
 from langchain_community.tools.wikipedia.tool import WikipediaQueryRun
 from langchain_experimental.tools import PythonREPLTool
 from langchain_community.utilities import GoogleSerperAPIWrapper
 from langchain_community.utilities.wikipedia import WikipediaAPIWrapper
 from utils import safe_tool
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import google.oauth2.service_account as sa
 
 load_dotenv(override=True)
 pushover_token = os.getenv("PUSHOVER_TOKEN")
@@ -34,9 +38,17 @@ def get_file_tools():
     toolkit = FileManagementToolkit(root_dir="sandbox")
     return toolkit.get_tools()
 
+def get_calendar_tools():
+    if not hasattr(sa, "ServiceCredentials"):
+        sa.ServiceCredentials = sa.Credentials
+
+    toolkit = CalendarToolkit()
+    return toolkit.get_tools()
+
 
 async def other_tools():
     push_tool = Tool(name="notify_user", func=push, description="Use this tool when you want to send a push notification to the user")
+    calendar_tools = get_calendar_tools()
     file_tools = get_file_tools()
 
     tool_search =Tool(
@@ -50,5 +62,5 @@ async def other_tools():
 
     python_repl = PythonREPLTool()
     
-    return file_tools + [push_tool, tool_search, python_repl,  wiki_tool]
+    return file_tools+ calendar_tools + [push_tool, tool_search, python_repl,  wiki_tool]
 

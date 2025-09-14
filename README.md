@@ -23,7 +23,10 @@ cd orbit-ai
 Install dependencies:
 
 ```bash
+uv venv
+.venv\Scripts\activate
 uv pip install -r requirements.txt
+uv run playwright install
 ```
 
 Set up environment variables in `.env`:

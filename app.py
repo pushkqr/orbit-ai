@@ -1,3 +1,6 @@
+from datetime import datetime
+import tempfile
+import os
 import gradio as gr
 from orbit import Orbit
 
@@ -10,7 +13,7 @@ async def setup():
 
 async def process_message(orbit, message, success_criteria, history):
     results = await orbit.run_superstep(message, success_criteria, history)
-    return results, orbit
+    return results, orbit, ""
 
 
 async def reset():
@@ -30,9 +33,20 @@ def free_resources(orbit):
 
 def export_history(history):
     if not history:
-        return ""
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        tmp_path = os.path.join(tempfile.gettempdir(), f"chat_{timestamp}.txt")
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            f.write("No chat history available yet.")
+        return tmp_path
+    
     content = "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in history])
-    return content
+
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    tmp_path = os.path.join(tempfile.gettempdir(), f"chat_{timestamp}.txt")
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        f.write(content)
+    
+    return tmp_path
 
 
 with gr.Blocks(title="Orbit", theme=gr.themes.Default(primary_hue="emerald")) as ui:
@@ -59,17 +73,17 @@ with gr.Blocks(title="Orbit", theme=gr.themes.Default(primary_hue="emerald")) as
     with gr.Row():
         reset_button = gr.Button("Reset", variant="stop")
         go_button = gr.Button("Go!", variant="primary")
-        download_btn = gr.DownloadButton("Download Chat", visible=False)
+        download_btn = gr.DownloadButton("Download Chat")
 
     ui.load(setup, [], [orbit])
     message.submit(
-        process_message, [orbit, message, success_criteria, chatbot], [chatbot, orbit]
+        process_message, [orbit, message, success_criteria, chatbot], [chatbot, orbit, message]
     )
     success_criteria.submit(
-        process_message, [orbit, message, success_criteria, chatbot], [chatbot, orbit]
+        process_message, [orbit, message, success_criteria, chatbot], [chatbot, orbit, message]
     )
     go_button.click(
-        process_message, [orbit, message, success_criteria, chatbot], [chatbot, orbit]
+        process_message, [orbit, message, success_criteria, chatbot], [chatbot, orbit, message]
     )
     reset_button.click(reset, [], [message, success_criteria, chatbot, orbit])
     download_btn.click(export_history, [chatbot], download_btn)
