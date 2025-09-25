@@ -31,7 +31,7 @@ uv venv
 Install dependencies:
 
 ```bash
-uv pip install -r requirements.txt
+uv sync
 uv run playwright install
 ```
 
@@ -47,15 +47,6 @@ SMTP_EMAIL=your_email_address
 SMTP_PASSWORD=your_app_password
 SMTP_SERVER=your_smtp_server_url
 ```
-
-### Google API / OAuth Client Setup
-
-1. Create a project in [Google Cloud Console](https://console.cloud.google.com/).
-2. Enable the required APIs (e.g., Calendar API, Generative AI API).
-3. Create OAuth 2.0 Client Credentials and download the `credentials.json` file.
-4. Save the `credentials.json` file in your project directory.
-5. During runtime, the application will prompt you to authenticate and generate a `token.json` for access.
-6. Make sure to grant the required scopes when prompted to authorize the app.
 
 Run the app:
 
@@ -82,7 +73,7 @@ orbit-ai/
 ├── orbit.py        # Core orchestrator (worker/evaluator graph)
 ├── tools.py        # Tool integrations (browser, search, notifications, etc.)
 ├── utils.py        # Function wrappers and other utilities
-├── requirements.txt
+├── pyproject.toml
 └── README.md
 ```
 

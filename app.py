@@ -51,7 +51,7 @@ def export_history(history):
 
 with gr.Blocks(title="Orbit", theme=gr.themes.Default(primary_hue="emerald")) as ui:
     gr.Markdown("""
-    <h1 style='text-align: center;'>🛰️ Orbit-AI</h1>
+    <h1 style='text-align: center;'>Orbit-AI</h1>
     <p style='text-align: center;'>Your Personal Aide, Powered by LangGraph</p>
     """)
 

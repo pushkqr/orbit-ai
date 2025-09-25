@@ -5,7 +5,6 @@ import os
 import requests
 from langchain.agents import Tool
 from langchain_core.tools.structured import StructuredTool
-from langchain_google_community import CalendarToolkit
 from langchain_community.agent_toolkits import FileManagementToolkit
 from langchain_community.tools.wikipedia.tool import WikipediaQueryRun
 from langchain_experimental.tools import PythonREPLTool
@@ -20,7 +19,7 @@ from pydantic import EmailStr, ValidationError, BaseModel, Field
 import logging
 import google.oauth2.service_account as sa
 from markdown_pdf import MarkdownPdf, Section
-
+from docx import Document
 
 load_dotenv(override=True)
 pushover_token = os.getenv("PUSHOVER_TOKEN")
@@ -29,7 +28,7 @@ pushover_url = "https://api.pushover.net/1/messages.json"
 serper = GoogleSerperAPIWrapper()
 
 class Mail(BaseModel):
-    to_addr: EmailStr | list[EmailStr] = Field(description="Recipient address or list of addresses")
+    to_addr: List[EmailStr] = Field(description="Recipient address or list of addresses")
     subject: str = Field(description="Subject")
     body: str = Field(description="Body")
 
@@ -37,12 +36,6 @@ def get_file_tools():
     toolkit = FileManagementToolkit(root_dir="sandbox")
     return toolkit.get_tools()
 
-def get_calendar_tools():
-    if not hasattr(sa, "ServiceCredentials"):
-        sa.ServiceCredentials = sa.Credentials
-        
-    toolkit = CalendarToolkit()
-    return toolkit.get_tools()
 
 @safe_tool
 def push(text: str):
@@ -51,7 +44,7 @@ def push(text: str):
     return {"success": "Push Notification sent successfully"}
 
 @safe_tool
-def send_email(to_addr: EmailStr | List[EmailStr], subject: str, body: str) -> Dict[str, str]:
+def send_email(to_addr: List[EmailStr], subject: str, body: str) -> Dict[str, str]:
     smtp_server = os.environ.get("SMTP_SERVER")
     smtp_port = 587
     sender_email = os.environ.get("SMTP_EMAIL")
@@ -60,8 +53,12 @@ def send_email(to_addr: EmailStr | List[EmailStr], subject: str, body: str) -> D
     if not smtp_server or not sender_email or not sender_password:
         logging.warning("SMTP configuration missing")
         return {"status": "error", "message": "Missing SMTP configuration"}
+    
+    if isinstance(to_addr, str):
+        recipient_emails = [to_addr]
+    else:
+        recipient_emails = to_addr
 
-    recipient_emails = to_addr if isinstance(to_addr, list) else [to_addr]
     for r in recipient_emails:
         try:
             EmailStr._validate(r)
@@ -96,6 +93,29 @@ def markdown_to_pdf(file_name: str, output: str = "sandbox/output.pdf"):
     pdf.save(output)
     return {"success": True, "output_path": output}
 
+@safe_tool
+def read_docx(file_path: str) -> Dict[str, str]:
+    """Read a DOCX file and extract all text content"""
+    try:
+        doc = Document(file_path)
+        full_text = []
+        
+        for paragraph in doc.paragraphs:
+            if paragraph.text.strip():
+                full_text.append(paragraph.text)
+        
+        # Also extract text from tables if any
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    if cell.text.strip():
+                        full_text.append(cell.text)
+        
+        content = "\n".join(full_text)
+        return {"success": True, "content": content, "file_path": file_path}
+    except Exception as e:
+        return {"success": False, "error": str(e), "file_path": file_path}
+
 
 async def playwright_tools():
     playwright = await async_playwright().start()
@@ -107,7 +127,7 @@ async def other_tools():
     push_tool = Tool(name="notify_user", func=push, description="Use this tool when you want to send a push notification to the user")
     email_tool = StructuredTool(name="send_email", func=send_email, description="Use this tool when you want to send an email", args_schema=Mail)
     markdown_to_pdf_tool = Tool(name="markdown_to_pdf", func=markdown_to_pdf, description="Use this tool when you want to convert Markdown(.md) file to PDF")
-    calendar_tools = get_calendar_tools()
+    docx_reader_tool = Tool(name="read_docx", func=read_docx, description="Use this tool when you want to read and extract text content from a DOCX file")
     file_tools = get_file_tools()
 
     tool_search =Tool(
@@ -121,5 +141,5 @@ async def other_tools():
 
     python_repl = PythonREPLTool()
     
-    return file_tools+ calendar_tools + [push_tool, tool_search, python_repl,  wiki_tool, email_tool, markdown_to_pdf_tool]
+    return file_tools + [push_tool, tool_search, python_repl, wiki_tool, email_tool, markdown_to_pdf_tool, docx_reader_tool]
 
